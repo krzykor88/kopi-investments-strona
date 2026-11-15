@@ -13,7 +13,7 @@
     els.forEach(el => el.classList.add('in'));
   }
 
-  formularzWyceny();
+  formularze();
 
   const linki = [...document.querySelectorAll('.gallery a')];
   if (!linki.length) return;
@@ -56,19 +56,60 @@
   });
 })();
 
-// Formularz wstępnej wyceny (strona dla właścicieli) → Apps Script /exec, fn=zgloszenie, bez tokenu.
-// Te same reguły co sprawdzZgloszenie_() w kod/strona_formularz/Kod.js — serwer sprawdza jeszcze raz.
-function formularzWyceny() {
-  const f = document.getElementById('formularz-wyceny');
-  if (!f) return;
+// Formularze → Apps Script /exec (projekt „Strona — zgłoszenia właścicieli”), POST bez tokenu.
+//   #formularz-wyceny   (dla właścicieli) fn=zgloszenie — reguły jak sprawdzZgloszenie_()
+//   #formularz-lokatora (dla lokatorów)   fn=lokator    — reguły jak sprawdzZgloszenieLokatora_()
+// Serwer sprawdza wszystko jeszcze raz; tu tylko podpowiedź dla człowieka.
+// ⚠ Same deklaracje FUNKCJI poniżej: wołamy je z IIFE na górze pliku, zanim wykona się reszta —
+//   `const` na poziomie pliku byłby wtedy w martwej strefie (ReferenceError i padłaby też galeria).
+function opisyPol() {
+  return {
+    adres: 'podaj adres mieszkania', dzielnica: 'podaj dzielnicę', metraz: 'podaj metraż (w m²)',
+    pokoje: 'podaj liczbę pokoi', szuka: 'wybierz, czego szukasz', osoby: 'podaj liczbę osób (1–10)',
+    email: 'sprawdź adres e-mail', telefon: 'sprawdź numer telefonu',
+    kontakt: 'podaj e-mail lub telefon', zgoda: 'zaznacz zgodę na kontakt'
+  };
+}
+
+function bledyKontaktu(f, v) {
+  const bledy = [];
+  const mail = v('email'), tel = v('telefon'), cyfry = tel.replace(/\D/g, '');
+  if (mail && !/^[^\s@<>"]+@[^\s@<>"]+\.[a-z]{2,}$/i.test(mail)) bledy.push('email');
+  if (tel && !(cyfry.length >= 9 && cyfry.length <= 15 && /^[0-9 +()\-]+$/.test(tel))) bledy.push('telefon');
+  if (!mail && !tel) bledy.push('kontakt');
+  if (!f.zgoda.checked) bledy.push('zgoda');
+  return bledy;
+}
+
+function formularze() {
+  const wycena = document.getElementById('formularz-wyceny');
+  if (wycena) obsluzFormularz(wycena, (f, v) => {
+    const bledy = [];
+    if (v('adres').length < 3) bledy.push('adres');
+    if (v('dzielnica').length < 2) bledy.push('dzielnica');
+    const m = Number(v('metraz').replace(',', '.'));
+    if (!(m >= 8 && m <= 1000)) bledy.push('metraz');
+    const k = Number(v('pokoje'));
+    if (!(k >= 1 && k <= 20 && Number.isInteger(k))) bledy.push('pokoje');
+    return bledy.concat(bledyKontaktu(f, v));
+  }, 'Dziękujemy! Zgłoszenie dotarło — odezwiemy się ze wstępną wyceną.');
+
+  const lokator = document.getElementById('formularz-lokatora');
+  if (lokator) obsluzFormularz(lokator, (f, v) => {
+    const bledy = [];
+    if (!v('szuka')) bledy.push('szuka');
+    const o = v('osoby');
+    if (o && !(Number(o) >= 1 && Number(o) <= 10 && Number.isInteger(Number(o)))) bledy.push('osoby');
+    return bledy.concat(bledyKontaktu(f, v));
+  }, 'Dziękujemy! Jesteś na naszej liście — odezwiemy się, gdy tylko zwolni się pokój.');
+}
+
+function obsluzFormularz(f, sprawdzPola, podziekowanie) {
   f.t0.value = String(Date.now());
   const msg = f.querySelector('.form-msg');
   const btn = f.querySelector('button[type=submit]');
-  const OPISY = {
-    adres: 'podaj adres mieszkania', dzielnica: 'podaj dzielnicę', metraz: 'podaj metraż (w m²)',
-    pokoje: 'podaj liczbę pokoi', email: 'sprawdź adres e-mail', telefon: 'sprawdź numer telefonu',
-    kontakt: 'podaj e-mail lub telefon', zgoda: 'zaznacz zgodę na kontakt'
-  };
+  const OPISY = opisyPol();
+  const sprawdz = () => sprawdzPola(f, n => (f[n] && f[n].value || '').trim());
   const pokaz = (tekst, klasa) => { msg.textContent = tekst; msg.className = 'form-msg ' + (klasa || ''); };
   const oznacz = pola => {
     f.querySelectorAll('.bad').forEach(el => el.classList.remove('bad'));
@@ -77,22 +118,6 @@ function formularzWyceny() {
       else if (p === 'zgoda') f.querySelector('.consent').classList.add('bad');
       else if (f[p]) f[p].classList.add('bad');
     });
-  };
-  const sprawdz = () => {
-    const v = n => (f[n].value || '').trim();
-    const bledy = [];
-    if (v('adres').length < 3) bledy.push('adres');
-    if (v('dzielnica').length < 2) bledy.push('dzielnica');
-    const m = Number(v('metraz').replace(',', '.'));
-    if (!(m >= 8 && m <= 1000)) bledy.push('metraz');
-    const k = Number(v('pokoje'));
-    if (!(k >= 1 && k <= 20 && Number.isInteger(k))) bledy.push('pokoje');
-    const mail = v('email'), tel = v('telefon'), cyfry = tel.replace(/\D/g, '');
-    if (mail && !/^[^\s@<>"]+@[^\s@<>"]+\.[a-z]{2,}$/i.test(mail)) bledy.push('email');
-    if (tel && !(cyfry.length >= 9 && cyfry.length <= 15 && /^[0-9 +()\-]+$/.test(tel))) bledy.push('telefon');
-    if (!mail && !tel) bledy.push('kontakt');
-    if (!f.zgoda.checked) bledy.push('zgoda');
-    return bledy;
   };
   f.addEventListener('submit', async e => {
     e.preventDefault();
@@ -106,7 +131,7 @@ function formularzWyceny() {
       const wynik = await odp.json();
       if (wynik.ok) {
         f.classList.add('sent');
-        pokaz('Dziękujemy! Zgłoszenie dotarło — odezwiemy się ze wstępną wyceną.', 'ok');
+        pokaz(podziekowanie, 'ok');
         return;
       }
       if (wynik.blad === 'DANE' && wynik.pola) {
