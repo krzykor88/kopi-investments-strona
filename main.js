@@ -66,16 +66,38 @@ function opisyPol() {
   return {
     adres: 'podaj adres mieszkania', dzielnica: 'podaj dzielnicę', metraz: 'podaj metraż (w m²)',
     pokoje: 'podaj liczbę pokoi', szuka: 'wybierz, czego szukasz', osoby: 'podaj liczbę osób (1–10)',
-    email: 'sprawdź adres e-mail', telefon: 'sprawdź numer telefonu',
+    email: 'sprawdź adres e-mail',
+    telefon: 'sprawdź numer telefonu (9 cyfr, a numer spoza Polski z kierunkowym, np. +380…)',
     kontakt: 'podaj e-mail lub telefon', zgoda: 'zaznacz zgodę na kontakt'
   };
 }
 
+// Kopia telefonPoprawny_() z kod/strona_formularz/Kod.js (1.4.0) — zmieniać RAZEM.
+function telefonPoprawny(tel) {
+  let s = String(tel || '').trim();
+  if (!s || !/^[0-9 +()\-.]+$/.test(s)) return false;
+  s = s.replace(/[\s()\-.]/g, '');
+  if (/^00/.test(s)) s = '+' + s.slice(2);
+  if (/^\+/.test(s.slice(1))) return false;
+  let krajowy;
+  if (/^\+48/.test(s)) krajowy = s.slice(3);
+  else if (/^\+380/.test(s)) { krajowy = s.slice(4); if (!/^\d{9}$/.test(krajowy)) return false; }
+  else if (/^\+/.test(s)) { if (!/^\+\d{8,15}$/.test(s)) return false; krajowy = s.slice(1); }
+  else if (/^48\d{9}$/.test(s)) krajowy = s.slice(2);
+  else krajowy = s;
+  if (!/^\+/.test(s) || /^\+48/.test(s)) {
+    if (!/^[1-9]\d{8}$/.test(krajowy)) return false;
+  }
+  if (/^(\d)\1+$/.test(krajowy)) return false;
+  if ('0123456789012345678'.indexOf(krajowy) !== -1 || '9876543210987654321'.indexOf(krajowy) !== -1) return false;
+  return true;
+}
+
 function bledyKontaktu(f, v) {
   const bledy = [];
-  const mail = v('email'), tel = v('telefon'), cyfry = tel.replace(/\D/g, '');
+  const mail = v('email'), tel = v('telefon');
   if (mail && !/^[^\s@<>"]+@[^\s@<>"]+\.[a-z]{2,}$/i.test(mail)) bledy.push('email');
-  if (tel && !(cyfry.length >= 9 && cyfry.length <= 15 && /^[0-9 +()\-]+$/.test(tel))) bledy.push('telefon');
+  if (tel && !telefonPoprawny(tel)) bledy.push('telefon');
   if (!mail && !tel) bledy.push('kontakt');
   if (!f.zgoda.checked) bledy.push('zgoda');
   return bledy;
