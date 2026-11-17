@@ -148,6 +148,8 @@ footer a{color:var(--muted)}
 /* Formularz wyceny */
 .quote{display:grid;grid-template-columns:.85fr 1.15fr;gap:clamp(24px,4vw,48px);background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:clamp(26px,4.5vw,52px)}
 .quote-intro h2{margin-bottom:12px}
+.wolne{list-style:none;padding:0;margin:0 0 16px}
+.wolne li{padding:10px 14px;margin:0 0 8px;border-left:3px solid var(--accent);background:rgba(0,0,0,.03);border-radius:6px;font-weight:600}
 .ticks{list-style:none;padding:0;margin:22px 0 0}
 .ticks li{padding:5px 0 5px 28px;position:relative;color:var(--muted)}
 .ticks li::before{content:"";position:absolute;left:2px;top:13px;width:12px;height:6px;border-left:2px solid var(--accent);border-bottom:2px solid var(--accent);transform:rotate(-45deg)}
